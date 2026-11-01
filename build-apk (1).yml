@@ -1,0 +1,38 @@
+name: Build universal APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # Generates the android/ folder if the repo doesn't have one yet.
+      - name: Create Android platform files (if missing)
+        run: |
+          if [ ! -d android ]; then flutter create --platforms=android --project-name motion_dex .; fi
+
+      - run: flutter pub get
+      - run: flutter test
+
+      # No --split-per-abi => one "universal" (fat) APK containing every ABI.
+      - run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: motion-dex-universal-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
